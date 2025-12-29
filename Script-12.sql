@@ -347,58 +347,107 @@ INSERT INTO siparis_detayi VALUES
 (99,40,2,1,13000,0.10),
 (100,41,3,2,900,0.05);
 
+INSERT INTO siparisler (siparis_id, musteri_id, siparis_tarihi, kargo_firmasi, durum) VALUES
+(101, 1, '2024-06-05', 'Yurtiçi', 'Teslim Edildi'),
+(102, 2, '2024-06-12', 'MNG', 'Teslim Edildi'),
+(103, 3, '2024-06-20', 'Aras', 'Teslim Edildi'),
 
-CREATE OR REPLACE VIEW vw_satis_analizi AS
+(104, 4, '2024-07-03', 'Yurtiçi', 'Teslim Edildi'),
+(105, 5, '2024-07-14', 'MNG', 'Teslim Edildi'),
+(106, 6, '2024-07-25', 'Aras', 'Teslim Edildi'),
+
+(107, 7, '2024-08-06', 'Yurtiçi', 'Teslim Edildi'),
+(108, 8, '2024-08-18', 'MNG', 'Teslim Edildi'),
+(109, 9, '2024-08-29', 'Aras', 'Teslim Edildi'),
+
+(110, 10, '2024-09-04', 'Yurtiçi', 'Teslim Edildi'),
+(111, 11, '2024-09-15', 'MNG', 'Teslim Edildi'),
+(112, 12, '2024-09-27', 'Aras', 'Teslim Edildi'),
+
+(113, 13, '2024-10-08', 'Yurtiçi', 'Teslim Edildi'),
+(114, 14, '2024-10-19', 'MNG', 'Teslim Edildi'),
+(115, 15, '2024-10-30', 'Aras', 'Teslim Edildi'),
+
+(116, 16, '2024-11-05', 'Yurtiçi', 'Teslim Edildi'),
+(117, 17, '2024-11-16', 'MNG', 'Teslim Edildi'),
+(118, 18, '2024-11-28', 'Aras', 'Teslim Edildi'),
+
+(119, 19, '2024-12-07', 'Yurtiçi', 'Teslim Edildi'),
+(120, 20, '2024-12-18', 'MNG', 'Teslim Edildi'),
+(121, 21, '2024-12-26', 'Aras', 'Teslim Edildi');
+
+INSERT INTO siparis_detayi (detay_id, siparis_id, urun_id, miktar, birim_fiyat, indirim) VALUES
+(201, 101, 1, 2, 250, 0),
+(202, 101, 3, 1, 400, 20),
+
+(203, 102, 2, 1, 300, 0),
+(204, 102, 4, 2, 150, 10),
+
+(205, 103, 5, 3, 120, 0),
+
+(206, 104, 1, 1, 250, 0),
+(207, 104, 6, 2, 180, 15),
+
+(208, 105, 3, 1, 400, 0),
+(209, 105, 7, 2, 220, 20),
+
+(210, 106, 2, 2, 300, 10),
+
+(211, 107, 4, 1, 150, 0),
+(212, 107, 5, 2, 120, 0),
+
+(213, 108, 6, 1, 180, 0),
+(214, 108, 1, 2, 250, 25),
+
+(215, 109, 7, 3, 220, 30),
+
+(216, 110, 2, 1, 300, 0),
+(217, 111, 3, 2, 400, 40),
+(218, 112, 4, 1, 150, 0),
+
+(219, 113, 5, 2, 120, 0),
+(220, 114, 6, 1, 180, 0),
+(221, 115, 7, 2, 220, 20),
+
+(222, 116, 1, 1, 250, 0),
+(223, 117, 2, 2, 300, 15),
+(224, 118, 3, 1, 400, 0),
+
+(225, 119, 4, 2, 150, 10),
+(226, 120, 5, 3, 120, 0),
+(227, 121, 6, 1, 180, 0);
+
+
+CREATE OR REPLACE VIEW vw_siparis_dim AS
 SELECT
     s.siparis_id,
     s.siparis_tarihi,
-    DATE_TRUNC('month', s.siparis_tarihi) AS ay,
-    
-    u.urun_id,
-    u.urun_adi,
-    k.kategori_id,
-    k.kategori_adi,
+    s.musteri_id,
+    m.ad,
+    m.soyad,
+    m.sehir,
+    m.ulke,
+    s.kargo_firmasi,
+    s.durum
+FROM siparisler s
+JOIN musteriler m
+    ON s.musteri_id = m.musteri_id;
 
+
+CREATE OR REPLACE VIEW vw_satis_fact AS
+SELECT
+    sd.detay_id,
+    sd.siparis_id,
+    sd.urun_id,
+    u.urun_adi,
+    k.kategori_adi,
     sd.miktar,
     sd.birim_fiyat,
     sd.indirim,
-
-    -- Ciro
-    (sd.miktar * sd.birim_fiyat * (1 - sd.indirim)) AS ciro,
-
-    -- Maliyet
-    (sd.miktar * u.alis_fiyati) AS maliyet,
-
-    -- Kar
-    (sd.miktar * sd.birim_fiyat * (1 - sd.indirim)) 
-    - (sd.miktar * u.alis_fiyati) AS kar
-
+    u.alis_fiyati
 FROM siparis_detayi sd
-JOIN siparisler s ON sd.siparis_id = s.siparis_id
-JOIN urunler u ON sd.urun_id = u.urun_id
-JOIN kategoriler k ON u.kategori_id = k.kategori_id
-WHERE s.durum = 'Teslim Edildi';
-
-
-CREATE OR REPLACE VIEW vw_sepet_analizi AS
-SELECT
-    s.siparis_id,
-    s.siparis_tarihi,
-    m.musteri_id,
-    m.sehir,
-
-    COUNT(sd.urun_id) AS urun_sayisi,
-    SUM(sd.miktar) AS toplam_adet,
-
-    SUM(sd.miktar * sd.birim_fiyat * (1 - sd.indirim)) AS sepet_tutari
-
-FROM siparisler s
-JOIN musteriler m ON s.musteri_id = m.musteri_id
-JOIN siparis_detayi sd ON s.siparis_id = sd.siparis_id
-WHERE s.durum = 'Teslim Edildi'
-GROUP BY
-    s.siparis_id,
-    s.siparis_tarihi,
-    m.musteri_id,
-    m.sehir;
+JOIN urunler u
+    ON sd.urun_id = u.urun_id
+JOIN kategoriler k
+    ON u.kategori_id = k.kategori_id;
 
